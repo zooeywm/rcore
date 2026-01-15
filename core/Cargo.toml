@@ -1,0 +1,12 @@
+[package]
+name              = "core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[[bin]]
+name  = "core"
+test  = false
+bench = false
+
+[dependencies]

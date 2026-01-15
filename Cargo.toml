@@ -1,0 +1,21 @@
+[workspace]
+resolver = "3"
+members  = ["core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["zooeywm"]
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+codegen-units = 1
+panic         = "abort"
+
+[profile.product]
+inherits = "release"
+lto      = "fat"
+
+[workspace.dependencies]
