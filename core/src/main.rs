@@ -3,6 +3,7 @@
 
 use core::arch::global_asm;
 
+mod logger;
 mod system;
 
 global_asm!(include_str!("asm/entry.asm"));
@@ -11,6 +12,11 @@ global_asm!(include_str!("asm/entry.asm"));
 pub fn rust_main() -> ! {
 	clear_bss();
 	println!("Hello, world!");
+	trace!("Hello I'm Trace");
+	debug!("Hello I'm Debug");
+	info!("Hello I'm Info");
+	warn!("Hello I'm Warn");
+	error!("Hello I'm Error");
 	panic!("Shutdown machine!");
 }
 

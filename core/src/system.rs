@@ -2,6 +2,8 @@ use core::{fmt::{self, Write}, panic::PanicInfo};
 
 use sbi_rt::{NoReason, Shutdown, SystemFailure, console_write_byte, system_reset};
 
+use crate::error;
+
 #[macro_export]
 macro_rules! print {
     ($fmt: literal $(, $($arg: tt)+)?) => {
@@ -35,9 +37,9 @@ pub fn print(args: fmt::Arguments) { Stdout.write_fmt(args).unwrap(); }
 fn panic_handler(info: &PanicInfo) -> ! {
 	let err = info.message();
 	if let Some(location) = info.location() {
-		println!("Panicked at {}:{} {}", location.file(), location.line(), err);
+		error!("Panicked at {}:{} {}", location.file(), location.line(), err);
 	} else {
-		println!("Panicked: {}", err);
+		error!("Panicked: {}", err);
 	}
 	// If OS is panic, shutdown the computer.
 	shutdown(true)
