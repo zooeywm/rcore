@@ -1,6 +1,3 @@
-[build]
-target = "riscv64gc-unknown-none-elf"
-
-[target.riscv64gc-unknown-none-elf]
-# Set linker script and force the compiler do not optimize fp.
-rustflags = ["-Clink-arg=-Tlinker.ld", "-Cforce-frame-pointers=yes"]
+[alias]
+run-core   = "run -r --bin xtask -- run"   # --release
+build-core = "run -r --bin xtask -- build" # --release
