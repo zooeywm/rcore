@@ -1,2 +1,6 @@
 [build]
-target    = "riscv64gc-unknown-none-elf"
+target = "riscv64gc-unknown-none-elf"
+
+[target.riscv64gc-unknown-none-elf]
+# Set linker script and force the compiler do not optimize fp.
+rustflags = ["-Clink-arg=-Tlinker.ld", "-Cforce-frame-pointers=yes"]

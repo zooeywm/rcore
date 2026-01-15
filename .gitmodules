@@ -1,0 +1,3 @@
+[submodule "rustsbi"]
+	path = core/rustsbi
+	url = https://github.com/rustsbi/rustsbi.git

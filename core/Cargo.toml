@@ -10,3 +10,4 @@ test  = false
 bench = false
 
 [dependencies]
+sbi-rt.workspace = true

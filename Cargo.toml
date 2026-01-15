@@ -19,3 +19,4 @@ inherits = "release"
 lto      = "fat"
 
 [workspace.dependencies]
+sbi-rt = { git = "https://github.com/rustsbi/rustsbi/", package = "sbi-rt", features = ["legacy"] }
