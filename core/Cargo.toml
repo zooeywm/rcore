@@ -11,3 +11,4 @@ bench = false
 
 [dependencies]
 sbi-rt.workspace = true
+riscv            = "0.16"

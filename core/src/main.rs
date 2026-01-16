@@ -3,6 +3,8 @@
 
 use core::arch::global_asm;
 
+use crate::system::{sleep_ms, sleep_us};
+
 mod logger;
 mod system;
 
@@ -10,21 +12,33 @@ global_asm!(include_str!("asm/entry.asm"));
 
 #[unsafe(no_mangle)]
 pub fn rust_main() -> ! {
-	clear_bss();
-	println!("Hello, world!");
-	trace!("Hello I'm Trace");
-	debug!("Hello I'm Debug");
-	info!("Hello I'm Info");
-	warn!("Hello I'm Warn");
-	error!("Hello I'm Error");
-	panic!("Shutdown machine!");
-}
-
-fn clear_bss() {
 	unsafe extern "C" {
-		fn sbss();
-		fn ebss();
+		safe fn stext(); // begin addr of text segment
+		safe fn etext(); // end addr of text segment
+		safe fn srodata(); // start addr of Read-Only data segment
+		safe fn erodata(); // end addr of Read-Only data ssegment
+		safe fn sdata(); // start addr of data segment
+		safe fn edata(); // end addr of data segment
+		safe fn sbss(); // start addr of BSS segment
+		safe fn ebss(); // end addr of BSS segment
+		safe fn boot_stack_lower_bound(); // stack lower bound
+		safe fn boot_stack_top(); // stack top
 	}
 	(sbss as *const () as usize..ebss as *const () as usize)
 		.for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
+
+	println!("[kernel] Hello, world!");
+	trace!("[kernel] .text [{:#x}, {:#x})", stext as *const () as usize, etext as *const () as usize);
+	debug!("[kernel] .rodata [{:#x}, {:#x})", srodata as *const () as usize, erodata as *const () as usize);
+	info!("[kernel] .data [{:#x}, {:#x})", sdata as *const () as usize, edata as *const () as usize);
+	warn!(
+		"[kernel] boot_stack top=bottom={:#x}, lower_bound={:#x}",
+		boot_stack_top as *const () as usize, boot_stack_lower_bound as *const () as usize
+	);
+	error!("[kernel] .bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
+	info!("Sleep 2000ms");
+	sleep_ms(2000);
+	info!("Sleep 1000000us");
+	sleep_us(1000000);
+	panic!("Shutdown machine!");
 }

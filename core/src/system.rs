@@ -1,5 +1,6 @@
 use core::{fmt::{self, Write}, panic::PanicInfo};
 
+use riscv::register::time;
 use sbi_rt::{NoReason, Shutdown, SystemFailure, console_write_byte, system_reset};
 
 use crate::error;
@@ -53,4 +54,33 @@ pub fn shutdown(failure: bool) -> ! {
 		system_reset(Shutdown, NoReason);
 	}
 	unreachable!()
+}
+
+/// Sleep for the specified number of milliseconds.
+/// Uses the mtime register which runs at 10MHz.
+pub fn sleep_ms(ms: u64) {
+	// mtime frequency: 10MHz = 10,000,000 cycles per second
+	// cycles = ms * 10,000,000 / 1000 = ms * 10,000
+	let cycles = ms * 10_000;
+	sleep_cycles(cycles);
+}
+
+/// Sleep for the specified number of microseconds.
+/// Uses the mtime register which runs at 10MHz.
+pub fn sleep_us(us: u64) {
+	// mtime frequency: 10MHz = 10,000,000 cycles per second
+	// cycles = us * 10,000,000 / 1,000,000 = us * 10
+	let cycles = us * 10;
+	sleep_cycles(cycles);
+}
+
+fn sleep_cycles(cycles: u64) {
+	let start = time::read();
+	let target = start.wrapping_add(cycles as usize);
+
+	// Handle wrapping case
+	if target < start {
+		while time::read() >= start {}
+	}
+	while time::read() < target {}
 }
