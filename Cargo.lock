@@ -166,14 +166,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "riscv",
- "sbi-rt",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -292,6 +284,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "kernel"
+version = "0.1.0"
+dependencies = [
+ "riscv",
+ "sbi-rt",
 ]
 
 [[package]]

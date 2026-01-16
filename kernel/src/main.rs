@@ -36,9 +36,9 @@ pub fn rust_main() -> ! {
 		boot_stack_top as *const () as usize, boot_stack_lower_bound as *const () as usize
 	);
 	error!("[kernel] .bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
-	info!("Sleep 2000ms");
-	sleep_ms(2000);
-	info!("Sleep 1000000us");
-	sleep_us(1000000);
+	info!("Sleep 500ms");
+	sleep_ms(500);
+	info!("Sleep 100000us(100ms)");
+	sleep_us(100000);
 	panic!("Shutdown machine!");
 }

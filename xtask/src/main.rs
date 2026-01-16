@@ -140,7 +140,7 @@ impl Xtask {
 		let rustflags = format!("-C link-arg=-T{} -C force-frame-pointers=yes", linker_script_abs.display());
 
 		let mut command = Command::new("cargo");
-		command.args(["build", "--bin", "core"]);
+		command.args(["build", "--bin", "kernel"]);
 		if self.mode.eq("release") {
 			command.arg("--release");
 		}
@@ -152,8 +152,8 @@ impl Xtask {
 		}
 
 		println!("✓ Kernel build successful");
-		let kernel_binary = self.target_dir.join("core");
-		let kernel_bin_binary = self.target_dir.join("core.bin");
+		let kernel_binary = self.target_dir.join("kernel");
+		let kernel_bin_binary = self.target_dir.join("kernel.bin");
 
 		if !kernel_binary.exists() {
 			anyhow::bail!(
@@ -182,11 +182,11 @@ impl Xtask {
 		self.build_kernel()?;
 
 		let bios_path = self.rustsbi_dir.join("target/riscv64gc-unknown-none-elf/release/rustsbi-prototyper.bin");
-		let kernel_bin_binary = self.target_dir.join("core.bin");
+		let kernel_bin_binary = self.target_dir.join("kernel.bin");
 
 		if !bios_path.exists() {
 			anyhow::bail!(
-				"RustSBI binary not found at {}. Run 'cargo build --release' in core directory first.",
+				"RustSBI binary not found at {}. Run 'cargo build --release' in kernel directory first.",
 				bios_path.display()
 			);
 		}

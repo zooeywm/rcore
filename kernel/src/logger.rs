@@ -1,4 +1,3 @@
-/// 彩色日志宏，S-mode 标签
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)+) => {
