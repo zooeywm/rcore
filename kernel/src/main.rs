@@ -5,6 +5,7 @@ use core::arch::global_asm;
 
 use crate::system::{sleep_ms, sleep_us};
 
+mod config;
 mod logger;
 mod system;
 

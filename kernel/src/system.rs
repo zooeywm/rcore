@@ -3,7 +3,7 @@ use core::{fmt::{self, Write}, panic::PanicInfo};
 use riscv::register::time;
 use sbi_rt::{NoReason, Shutdown, SystemFailure, console_write_byte, system_reset};
 
-use crate::error;
+use crate::{config::MTIME_FREQUENCY_US, error};
 
 #[macro_export]
 macro_rules! print {
@@ -59,18 +59,14 @@ pub fn shutdown(failure: bool) -> ! {
 /// Sleep for the specified number of milliseconds.
 /// Uses the mtime register which runs at 10MHz.
 pub fn sleep_ms(ms: u64) {
-	// mtime frequency: 10MHz = 10,000,000 cycles per second
-	// cycles = ms * 10,000,000 / 1000 = ms * 10,000
-	let cycles = ms * 10_000;
+	let cycles = ms * MTIME_FREQUENCY_US / 1_000;
 	sleep_cycles(cycles);
 }
 
 /// Sleep for the specified number of microseconds.
 /// Uses the mtime register which runs at 10MHz.
 pub fn sleep_us(us: u64) {
-	// mtime frequency: 10MHz = 10,000,000 cycles per second
-	// cycles = us * 10,000,000 / 1,000,000 = us * 10
-	let cycles = us * 10;
+	let cycles = us * MTIME_FREQUENCY_US / 1_000_000;
 	sleep_cycles(cycles);
 }
 
