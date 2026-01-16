@@ -1,18 +1,16 @@
+#![feature(linkage)]
 #![no_std]
-#![no_main]
 
-use core::{arch::global_asm, error};
-
-use crate::system::{sleep_ms, sleep_us};
+use crate::syscall::sys_exit;
 
 mod config;
 mod log;
-mod system;
-
-global_asm!(include_str!("asm/entry.asm"));
+mod syscall;
+pub mod system;
 
 #[unsafe(no_mangle)]
-pub fn rust_main() -> ! {
+#[unsafe(link_section = ".text.entry")]
+pub extern "C" fn _start() -> ! {
 	unsafe extern "C" {
 		safe fn stext(); // begin addr of text segment
 		safe fn etext(); // end addr of text segment
@@ -22,24 +20,28 @@ pub fn rust_main() -> ! {
 		safe fn edata(); // end addr of data segment
 		safe fn sbss(); // start addr of BSS segment
 		safe fn ebss(); // end addr of BSS segment
-		safe fn boot_stack_lower_bound(); // stack lower bound
-		safe fn boot_stack_top(); // stack top
 	}
 	(sbss as *const () as usize..ebss as *const () as usize)
 		.for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
 
-	println!("Hello, rcore!");
+	println!("Hello, user!");
 	trace!("text [{:#x}, {:#x})", stext as *const () as usize, etext as *const () as usize);
 	debug!(".rodata [{:#x}, {:#x})", srodata as *const () as usize, erodata as *const () as usize);
 	info!(".data [{:#x}, {:#x})", sdata as *const () as usize, edata as *const () as usize);
-	warn!(
-		"boot_stack top=bottom={:#x}, lower_bound={:#x}",
-		boot_stack_top as *const () as usize, boot_stack_lower_bound as *const () as usize
-	);
-	error!(".bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
+	warn!(".bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
+	error!("This is an error log");
 	info!("Sleep 500ms");
-	sleep_ms(500);
+	// sleep_ms(500);
 	info!("Sleep 100000us(100ms)");
-	sleep_us(100000);
-	panic!("Shutdown machine!");
+	// sleep_us(100000);
+	sys_exit(main());
+	unreachable!("unreachable after sys_exit!");
+}
+
+/// Weak linkage, to make it pass compile when bin lack of main function.
+/// But will panic at runtime.
+#[linkage = "weak"]
+#[unsafe(no_mangle)]
+fn main() -> i32 {
+	panic!("Cannot find main!");
 }

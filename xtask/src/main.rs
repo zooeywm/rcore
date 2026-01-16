@@ -37,9 +37,10 @@ enum Commands {
 }
 
 struct Xtask {
-	mode:        String,
-	target_dir:  PathBuf,
-	rustsbi_dir: PathBuf,
+	mode:         String,
+	target_dir:   PathBuf,
+	rustsbi_dir:  PathBuf,
+	package_root: PathBuf,
 }
 
 fn hash_dir(dir: &Path) -> Result<Vec<u8>> {
@@ -71,6 +72,7 @@ fn main() -> Result<()> {
 			.join(&mode),
 		mode,
 		rustsbi_dir: package_root.join("rustsbi"),
+		package_root,
 	};
 
 	match cli.command {
@@ -82,9 +84,10 @@ fn main() -> Result<()> {
 }
 
 impl Xtask {
-	fn build(self) -> Result<()> {
+	fn build(&self) -> Result<()> {
 		self.build_rustsbi()?;
 		self.build_kernel()?;
+		self.build_user()?;
 
 		Ok(())
 	}
@@ -134,7 +137,7 @@ impl Xtask {
 	fn build_kernel(&self) -> Result<()> {
 		println!("Building kernel...");
 
-		let linker_script = PathBuf::from("/home/zooeywm/repos/mine/rcore/xtask/linker.ld");
+		let linker_script = self.package_root.join("linker-kernel.ld");
 		let linker_script_abs = std::fs::canonicalize(&linker_script)?;
 
 		let rustflags = format!("-C link-arg=-T{} -C force-frame-pointers=yes", linker_script_abs.display());
@@ -178,8 +181,57 @@ impl Xtask {
 		Ok(())
 	}
 
+	fn build_user(&self) -> Result<()> {
+		println!("Building user...");
+
+		let linker_script = self.package_root.join("linker-user.ld");
+		let linker_script_abs = std::fs::canonicalize(&linker_script)?;
+
+		let rustflags = format!("-C link-arg=-T{} -C force-frame-pointers=yes", linker_script_abs.display());
+
+		for bin in ["00_hello_world", "01_store_fault", "02_power", "03_priv_inst", "04_priv_csr"] {
+			let mut command = Command::new("cargo");
+			command.args(["build", "--bin", bin]);
+			if self.mode.eq("release") {
+				command.arg("--release");
+			}
+			let status =
+				command.args(["--target", "riscv64gc-unknown-none-elf"]).env("RUSTFLAGS", &rustflags).status()?;
+
+			if !status.success() {
+				anyhow::bail!("User build failed");
+			}
+		}
+
+		println!("✓ User build successful");
+		// let user_binary = self.target_dir.join("kernel");
+		// let user_bin_binary = self.target_dir.join("kernel.bin");
+		//
+		// if !user_binary.exists() {
+		// 	anyhow::bail!(
+		// 		"User binary not found at {}. Run 'cargo build --release' first.",
+		// 		user_binary.display()
+		// 	);
+		// }
+		//
+		// let status = Command::new("rust-objcopy")
+		// 	.arg("--strip-all")
+		// 	.arg(user_binary)
+		// 	.arg("-O")
+		// 	.arg("binary")
+		// 	.arg(&user_bin_binary)
+		// 	.status()?;
+		//
+		// if !status.success() {
+		// 	anyhow::bail!("rust-objcopy failed with status: {:?}", status);
+		// }
+		//
+		// println!("✓ Generated kernel raw binary: {}", user_bin_binary.display());
+		Ok(())
+	}
+
 	fn run_qemu(&self, extra_qemu_args: Vec<String>) -> Result<()> {
-		self.build_kernel()?;
+		self.build()?;
 
 		let bios_path = self.rustsbi_dir.join("target/riscv64gc-unknown-none-elf/release/rustsbi-prototyper.bin");
 		let kernel_bin_binary = self.target_dir.join("kernel.bin");

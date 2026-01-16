@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = ["kernel", "xtask"]
+members  = ["kernel", "user", "xtask"]
 
 [workspace.package]
 version = "0.1.0"
@@ -20,3 +20,4 @@ lto      = "fat"
 
 [workspace.dependencies]
 sbi-rt = { git = "https://github.com/rustsbi/rustsbi/", package = "sbi-rt", features = ["legacy"] }
+riscv  = "0.16"
