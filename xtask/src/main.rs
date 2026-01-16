@@ -1,6 +1,5 @@
-use std::{env, fs, path::{Path, PathBuf}, process::Command};
+use std::{env, fs::{self, File, read_dir}, io::Write, path::{Path, PathBuf}, process::Command};
 
-use anyhow::Result;
 use clap::{Parser, Subcommand};
 use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
@@ -37,13 +36,14 @@ enum Commands {
 }
 
 struct Xtask {
-	mode:         String,
-	target_dir:   PathBuf,
-	rustsbi_dir:  PathBuf,
-	package_root: PathBuf,
+	mode:          String,
+	target_dir:    PathBuf,
+	rustsbi_dir:   PathBuf,
+	package_dir:   PathBuf,
+	workspace_dir: PathBuf,
 }
 
-fn hash_dir(dir: &Path) -> Result<Vec<u8>> {
+fn hash_dir(dir: &Path) -> anyhow::Result<Vec<u8>> {
 	let mut hasher = Sha256::new();
 
 	for entry in WalkDir::new(dir).into_iter().filter_map(Result::ok) {
@@ -58,21 +58,20 @@ fn hash_dir(dir: &Path) -> Result<Vec<u8>> {
 	Ok(hasher.finalize().to_vec())
 }
 
-fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
 	let cli = Cli::parse();
 
-	let package_root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
+	let package_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+	let workspace_dir = package_dir.parent().expect("No workspace dir").to_path_buf();
 
 	let mode = if cli.release() { "release" } else { "debug" }.to_string();
+
 	let xtask = Xtask {
-		target_dir: package_root
-			.parent()
-			.expect("No workspace dir")
-			.join("target/riscv64gc-unknown-none-elf/")
-			.join(&mode),
+		target_dir: workspace_dir.join("target/riscv64gc-unknown-none-elf/").join(&mode),
 		mode,
-		rustsbi_dir: package_root.join("rustsbi"),
-		package_root,
+		rustsbi_dir: package_dir.join("rustsbi"),
+		package_dir,
+		workspace_dir,
 	};
 
 	match cli.command {
@@ -84,7 +83,7 @@ fn main() -> Result<()> {
 }
 
 impl Xtask {
-	fn build(&self) -> Result<()> {
+	fn build(&self) -> anyhow::Result<()> {
 		self.build_rustsbi()?;
 		self.build_kernel()?;
 		self.build_user()?;
@@ -92,7 +91,7 @@ impl Xtask {
 		Ok(())
 	}
 
-	fn build_rustsbi(&self) -> Result<()> {
+	fn build_rustsbi(&self) -> anyhow::Result<()> {
 		println!("Checking RustSBI changes...");
 
 		let xtask_dir = self.rustsbi_dir.join("xtask");
@@ -134,10 +133,10 @@ impl Xtask {
 		Ok(())
 	}
 
-	fn build_kernel(&self) -> Result<()> {
+	fn build_kernel(&self) -> anyhow::Result<()> {
 		println!("Building kernel...");
 
-		let linker_script = self.package_root.join("linker-kernel.ld");
+		let linker_script = self.package_dir.join("linker-kernel.ld");
 		let linker_script_abs = std::fs::canonicalize(&linker_script)?;
 
 		let rustflags = format!("-C link-arg=-T{} -C force-frame-pointers=yes", linker_script_abs.display());
@@ -181,15 +180,16 @@ impl Xtask {
 		Ok(())
 	}
 
-	fn build_user(&self) -> Result<()> {
+	fn build_user(&self) -> anyhow::Result<()> {
 		println!("Building user...");
 
-		let linker_script = self.package_root.join("linker-user.ld");
+		let linker_script = self.package_dir.join("linker-user.ld");
 		let linker_script_abs = std::fs::canonicalize(&linker_script)?;
 
 		let rustflags = format!("-C link-arg=-T{} -C force-frame-pointers=yes", linker_script_abs.display());
 
 		for bin in ["00_hello_world", "01_store_fault", "02_power", "03_priv_inst", "04_priv_csr"] {
+			println!("Building {bin}...");
 			let mut command = Command::new("cargo");
 			command.args(["build", "--bin", bin]);
 			if self.mode.eq("release") {
@@ -204,33 +204,10 @@ impl Xtask {
 		}
 
 		println!("✓ User build successful");
-		// let user_binary = self.target_dir.join("kernel");
-		// let user_bin_binary = self.target_dir.join("kernel.bin");
-		//
-		// if !user_binary.exists() {
-		// 	anyhow::bail!(
-		// 		"User binary not found at {}. Run 'cargo build --release' first.",
-		// 		user_binary.display()
-		// 	);
-		// }
-		//
-		// let status = Command::new("rust-objcopy")
-		// 	.arg("--strip-all")
-		// 	.arg(user_binary)
-		// 	.arg("-O")
-		// 	.arg("binary")
-		// 	.arg(&user_bin_binary)
-		// 	.status()?;
-		//
-		// if !status.success() {
-		// 	anyhow::bail!("rust-objcopy failed with status: {:?}", status);
-		// }
-		//
-		// println!("✓ Generated kernel raw binary: {}", user_bin_binary.display());
-		Ok(())
+		self.insert_user_app_data()
 	}
 
-	fn run_qemu(&self, extra_qemu_args: Vec<String>) -> Result<()> {
+	fn run_qemu(&self, extra_qemu_args: Vec<String>) -> anyhow::Result<()> {
 		self.build()?;
 
 		let bios_path = self.rustsbi_dir.join("target/riscv64gc-unknown-none-elf/release/rustsbi-prototyper.bin");
@@ -261,5 +238,53 @@ impl Xtask {
 		let status = cmd.status()?;
 
 		std::process::exit(status.code().unwrap_or(1));
+	}
+
+	/// Insert app binaries to link.
+	fn insert_user_app_data(&self) -> anyhow::Result<()> {
+		let app_link_file_path = self.package_dir.join("link_app.S");
+		let mut app_link_file = File::create(&app_link_file_path)?;
+		let mut apps: Vec<_> = read_dir(self.workspace_dir.join("user/src/bin"))?
+			.map(|entry| {
+				let mut name_with_ext = entry.unwrap().file_name().into_string().unwrap();
+				// remove extension
+				name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
+				name_with_ext
+			})
+			.collect();
+		apps.sort();
+
+		writeln!(
+			app_link_file,
+			r#"/* Generated by build.rs */
+    .align 3
+    .section .data
+    .global _num_app
+_num_app:
+    .quad {}"#,
+			apps.len()
+		)?;
+
+		for i in 0..apps.len() {
+			writeln!(app_link_file, r#"    .quad app_{}_start"#, i)?;
+		}
+		writeln!(app_link_file, r#"    .quad app_{}_end"#, apps.len() - 1)?;
+
+		for (idx, app) in apps.iter().enumerate() {
+			writeln!(
+				app_link_file,
+				r#"
+    .section .data
+    .global app_{0}_start
+    .global app_{0}_end
+app_{0}_start:
+    .incbin "{1}.bin"
+app_{0}_end:"#,
+				idx,
+				self.target_dir.join(app).display()
+			)?;
+		}
+		println!("Generated {}", app_link_file_path.display());
+		Ok(())
 	}
 }
