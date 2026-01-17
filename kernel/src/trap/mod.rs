@@ -21,11 +21,20 @@ pub fn init() {
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 	let scause = scause::read();
 	let stval = stval::read();
+
 	match scause.cause().try_into::<Interrupt, Exception>().expect("Wrong trap type") {
 		Trap::Exception(Exception::UserEnvCall) => {
 			cx.sepc += 4;
 			// a7 - syscall ID, a0~a2: args, a0: also record return value
 			cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+		}
+		Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
+			error!("[kernel] PageFault in application, kernel killed it.");
+			run_next_app();
+		}
+		Trap::Exception(Exception::IllegalInstruction) => {
+			error!("[kernel] IllegalInstruction in application, kernel killed it.");
+			run_next_app();
 		}
 		Trap::Exception(e) => {
 			error!("{e:?} in application, kernel killed it.");

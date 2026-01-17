@@ -7,9 +7,8 @@
     .section .text
     .globl __alltraps
     .globl __restore
-
-# Align the addresses of __alltraps to 4 bytes, which is a requirement of the RISC-V privilege level specification
-.align 2
+    # Align the addresses of __alltraps to 4 bytes, which is a requirement of the RISC-V privilege level specification
+    .align 2
 
 __alltraps:
     # exchange sp and sscratch

@@ -2,7 +2,7 @@ use core::{fmt::{Arguments, Write}, panic::PanicInfo};
 
 use config::fd::STDOUT;
 
-use crate::{error, syscall::sys_write};
+use crate::{error, stack_trace::print_stack_trace, syscall::sys_write};
 
 #[macro_export]
 macro_rules! print {
@@ -38,6 +38,9 @@ fn panic_handler(info: &PanicInfo) -> ! {
 		error!("Panicked at {}:{} {}", location.file(), location.line(), err);
 	} else {
 		error!("Panicked: {}", err);
+	}
+	unsafe {
+		print_stack_trace();
 	}
 	// When application panic, pend and wait for os instruction.
 	loop {}

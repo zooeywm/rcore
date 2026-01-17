@@ -3,7 +3,7 @@ use core::{fmt::{self, Write}, panic::PanicInfo};
 use riscv::register::time;
 use sbi_rt::{NoReason, Shutdown, SystemFailure, console_write_byte, system_reset};
 
-use crate::{config::MTIME_FREQUENCY_HZ, error};
+use crate::{config::MTIME_FREQUENCY_HZ, error, stack_trace::print_stack_trace};
 
 #[macro_export]
 macro_rules! print {
@@ -41,6 +41,9 @@ fn panic_handler(info: &PanicInfo) -> ! {
 		error!("Panicked at {}:{} {}", location.file(), location.line(), err);
 	} else {
 		error!("Panicked: {}", err);
+	}
+	unsafe {
+		print_stack_trace();
 	}
 	// If OS is panic, shutdown the computer.
 	shutdown(true)

@@ -14,8 +14,8 @@ fn main() -> i32 {
 	info!("Sleep 1s");
 	sys_nanosleep(&KernelTimespec::sec(1), ptr::null_mut());
 	info!("Sleep finished!");
-	// info!("Sleep 1s Again");
-	// sys_nanosleep(&KernelTimespec::sec(1), ptr::null_mut());
-	// info!("Sleep again finished!");
+	info!("Sleep 1s Again");
+	sys_nanosleep(&KernelTimespec::sec(1), ptr::null_mut());
+	info!("Sleep again finished!");
 	0
 }

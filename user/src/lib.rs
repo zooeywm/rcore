@@ -4,6 +4,7 @@
 use crate::syscall::sys_exit;
 
 mod log;
+mod stack_trace;
 pub mod syscall;
 pub mod system;
 

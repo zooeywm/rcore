@@ -8,6 +8,7 @@ use crate::system::{sleep_ms, sleep_us};
 mod batch;
 mod config;
 mod log;
+mod stack_trace;
 pub(crate) mod syscall;
 mod system;
 pub(crate) mod trap;
