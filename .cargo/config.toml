@@ -1,6 +1,6 @@
 [alias]
-run-kernel   = "run -r --bin xtask -- run"   # --release
-build-kernel = "run -r --bin xtask -- build" # --release
+run-os   = "run -r --bin xtask -- run"   # --release
+build-os = "run -r --bin xtask -- build" # --release
 
 clippy-kernel = "clippy --package kernel --target riscv64gc-unknown-none-elf"
 clippy-user   = "clippy --package user --target riscv64gc-unknown-none-elf"

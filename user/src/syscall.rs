@@ -2,7 +2,7 @@
 
 use core::arch::asm;
 
-use crate::config::*;
+use config::syscall::*;
 
 /// Use `ecall` to generate `Environment call from U-mode Exception`, trap into
 /// S-mode. Which also calls `ABI` or `syscall`.
@@ -40,7 +40,7 @@ fn syscall(id: usize, args: [usize; 3]) -> isize {
 /// `Return`: Successfully wrote length
 /// `syscall ID`: 64
 pub fn sys_write(fd: usize, buffer: &[u8]) -> isize {
-	syscall(SYSCALL_WRITE, [fd, buffer.as_ptr() as usize, buffer.len()])
+	syscall(WRITE, [fd, buffer.as_ptr() as usize, buffer.len()])
 }
 
 /// `Function` - Exit application and tell the batch os
@@ -48,4 +48,8 @@ pub fn sys_write(fd: usize, buffer: &[u8]) -> isize {
 ///     - `exit_code` - Application's exit code
 /// `Return`: Never return
 /// `syscall ID`: 93
-pub fn sys_exit(exit_code: i32) -> isize { syscall(SYSCALL_EXIT, [exit_code as usize, 0, 0]) }
+pub fn sys_exit(exit_code: i32) -> isize { syscall(EXIT, [exit_code as usize, 0, 0]) }
+
+pub fn sys_nanosleep(req: *const KernelTimespec, rem: *mut KernelTimespec) -> isize {
+	syscall(NANOSLEEP, [req as usize, rem as usize, 0])
+}

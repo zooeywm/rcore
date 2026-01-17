@@ -1,9 +1,7 @@
 [package]
-name              = "user"
+name = "config"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-riscv.workspace  = true
-config.workspace = true

@@ -36,11 +36,12 @@ enum Commands {
 }
 
 struct Xtask {
-	mode:          String,
-	target_dir:    PathBuf,
-	rustsbi_dir:   PathBuf,
-	package_dir:   PathBuf,
-	workspace_dir: PathBuf,
+	mode:                String,
+	target_dir:          PathBuf,
+	rustsbi_dir:         PathBuf,
+	package_dir:         PathBuf,
+	workspace_dir:       PathBuf,
+	kernel_need_rebuild: bool,
 }
 
 fn hash_dir(dir: &Path) -> anyhow::Result<Vec<u8>> {
@@ -66,12 +67,13 @@ fn main() -> anyhow::Result<()> {
 
 	let mode = if cli.release() { "release" } else { "debug" }.to_string();
 
-	let xtask = Xtask {
+	let mut xtask = Xtask {
 		target_dir: workspace_dir.join("target/riscv64gc-unknown-none-elf/").join(&mode),
 		mode,
 		rustsbi_dir: package_dir.join("rustsbi"),
 		package_dir,
 		workspace_dir,
+		kernel_need_rebuild: false,
 	};
 
 	match cli.command {
@@ -83,36 +85,45 @@ fn main() -> anyhow::Result<()> {
 }
 
 impl Xtask {
-	fn build(&self) -> anyhow::Result<()> {
+	fn build(&mut self) -> anyhow::Result<()> {
+		fs::create_dir_all(&self.target_dir)?;
 		self.build_rustsbi()?;
-		self.build_kernel()?;
 		self.build_user()?;
-
+		self.build_kernel()?;
 		Ok(())
 	}
 
-	fn build_rustsbi(&self) -> anyhow::Result<()> {
-		println!("Checking RustSBI changes...");
+	fn need_rerun(&self, dirs: &[&Path], scope: &str) -> anyhow::Result<bool> {
+		let stamp_file = self.target_dir.join(scope).with_extension("stamp");
 
-		let xtask_dir = self.rustsbi_dir.join("xtask");
-		let proto_dir = self.rustsbi_dir.join("prototyper");
-		let stamp_file = self.rustsbi_dir.join("target/riscv64gc-unknown-none-elf/release/.rustsbi.stamp");
-
-		if !xtask_dir.exists() || !proto_dir.exists() {
-			anyhow::bail!("rustsbi submodule not initialized correctly");
-		}
 		let mut combined = Vec::new();
-		combined.extend(hash_dir(&xtask_dir)?);
-		combined.extend(hash_dir(&proto_dir)?);
-
 		let changed = match fs::read(&stamp_file) {
-			Ok(old) => old != combined,
+			Ok(old) => {
+				for dir in dirs {
+					combined.extend(hash_dir(dir)?);
+				}
+				old != combined
+			}
 			Err(_) => true,
 		};
 
 		if !changed {
-			println!("✓ RustSBI unchanged, skip build");
+			println!("✓ {scope} unchanged, skip build");
+			return Ok(false);
+		}
+		fs::write(&stamp_file, combined)?;
+		Ok(true)
+	}
+
+	fn build_rustsbi(&self) -> anyhow::Result<()> {
+		let xtask_dir = self.rustsbi_dir.join("xtask");
+		let proto_dir = self.rustsbi_dir.join("prototyper");
+		if !self.need_rerun(&[&xtask_dir, &proto_dir], "rustsbi")? {
 			return Ok(());
+		}
+
+		if !xtask_dir.exists() || !proto_dir.exists() {
+			anyhow::bail!("rustsbi submodule not initialized correctly");
 		}
 
 		println!("Building RustSBI...");
@@ -128,7 +139,6 @@ impl Xtask {
 			anyhow::bail!("RustSBI build failed");
 		}
 
-		fs::write(&stamp_file, combined)?;
 		println!("✓ RustSBI build successful");
 		Ok(())
 	}
@@ -180,7 +190,7 @@ impl Xtask {
 		Ok(())
 	}
 
-	fn build_user(&self) -> anyhow::Result<()> {
+	fn build_user(&mut self) -> anyhow::Result<()> {
 		println!("Building user...");
 
 		let linker_script = self.package_dir.join("linker-user.ld");
@@ -204,10 +214,10 @@ impl Xtask {
 		}
 
 		println!("✓ User build successful");
-		self.insert_user_app_data()
+		self.generate_user_app_data()
 	}
 
-	fn run_qemu(&self, extra_qemu_args: Vec<String>) -> anyhow::Result<()> {
+	fn run_qemu(&mut self, extra_qemu_args: Vec<String>) -> anyhow::Result<()> {
 		self.build()?;
 
 		let bios_path = self.rustsbi_dir.join("target/riscv64gc-unknown-none-elf/release/rustsbi-prototyper.bin");
@@ -240,9 +250,12 @@ impl Xtask {
 		std::process::exit(status.code().unwrap_or(1));
 	}
 
-	/// Insert app binaries to link.
-	fn insert_user_app_data(&self) -> anyhow::Result<()> {
-		let app_link_file_path = self.package_dir.join("link_app.S");
+	/// Generate app binaries linker.
+	fn generate_user_app_data(&mut self) -> anyhow::Result<()> {
+		if !self.need_rerun(&[&self.workspace_dir.join("user/src")], "user")? {
+			return Ok(());
+		}
+		let app_link_file_path = self.workspace_dir.join("kernel/src/asm/link_app.S");
 		let mut app_link_file = File::create(&app_link_file_path)?;
 		let mut apps: Vec<_> = read_dir(self.workspace_dir.join("user/src/bin"))?
 			.map(|entry| {
@@ -271,6 +284,25 @@ _num_app:
 		writeln!(app_link_file, r#"    .quad app_{}_end"#, apps.len() - 1)?;
 
 		for (idx, app) in apps.iter().enumerate() {
+			let app_binary = self.target_dir.join(app);
+			let aapp_bin_binary = app_binary.with_extension("bin");
+
+			if !app_binary.exists() {
+				anyhow::bail!("App binary not found at {}.", app_binary.display());
+			}
+
+			let status = Command::new("rust-objcopy")
+				.arg("--strip-all")
+				.arg(&app_binary)
+				.arg("-O")
+				.arg("binary")
+				.arg(&aapp_bin_binary)
+				.status()?;
+
+			if !status.success() {
+				anyhow::bail!("{} rust-objcopy failed with status: {:?}", app_binary.display(), status);
+			}
+
 			writeln!(
 				app_link_file,
 				r#"
@@ -285,6 +317,15 @@ app_{0}_end:"#,
 			)?;
 		}
 		println!("Generated {}", app_link_file_path.display());
+		// We do not realize elf yet, we need to clean the kernel, because it include
+		// the last user bins, it will not be recompiled
+		let status = Command::new("cargo").args(["clean", "--package", "kernel"]).status()?;
+
+		if !status.success() {
+			anyhow::bail!("Clean kernel failed");
+		}
+
+		self.kernel_need_rebuild = true;
 		Ok(())
 	}
 }

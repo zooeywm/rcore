@@ -1,6 +1,8 @@
 use core::{fmt::{Arguments, Write}, panic::PanicInfo};
 
-use crate::{config::STDOUT, error, syscall::sys_write};
+use config::fd::STDOUT;
+
+use crate::{error, syscall::sys_write};
 
 #[macro_export]
 macro_rules! print {

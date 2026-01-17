@@ -5,11 +5,15 @@ use core::{arch::global_asm, error};
 
 use crate::system::{sleep_ms, sleep_us};
 
+mod batch;
 mod config;
 mod log;
+pub(crate) mod syscall;
 mod system;
+pub(crate) mod trap;
 
 global_asm!(include_str!("asm/entry.asm"));
+global_asm!(include_str!("asm/link_app.S"));
 
 #[unsafe(no_mangle)]
 pub fn rust_main() -> ! {
@@ -41,5 +45,8 @@ pub fn rust_main() -> ! {
 	sleep_ms(500);
 	info!("Sleep 100000us(100ms)");
 	sleep_us(100000);
-	panic!("Shutdown machine!");
+
+	trap::init();
+	batch::init();
+	batch::run_next_app();
 }

@@ -3,7 +3,7 @@ use core::{fmt::{self, Write}, panic::PanicInfo};
 use riscv::register::time;
 use sbi_rt::{NoReason, Shutdown, SystemFailure, console_write_byte, system_reset};
 
-use crate::{config::MTIME_FREQUENCY_US, error};
+use crate::{config::MTIME_FREQUENCY_HZ, error};
 
 #[macro_export]
 macro_rules! print {
@@ -59,20 +59,28 @@ pub fn shutdown(failure: bool) -> ! {
 /// Sleep for the specified number of milliseconds.
 /// Uses the mtime register which runs at 10MHz.
 pub fn sleep_ms(ms: u64) {
-	let cycles = ms * MTIME_FREQUENCY_US / 1_000;
-	sleep_cycles(cycles);
+	let cycles = ms * MTIME_FREQUENCY_HZ / 1_000;
+	sleep_ticks(cycles);
 }
 
 /// Sleep for the specified number of microseconds.
 /// Uses the mtime register which runs at 10MHz.
 pub fn sleep_us(us: u64) {
-	let cycles = us * MTIME_FREQUENCY_US / 1_000_000;
-	sleep_cycles(cycles);
+	let cycles = us * MTIME_FREQUENCY_HZ / 1_000_000;
+	sleep_ticks(cycles);
 }
 
-fn sleep_cycles(cycles: u64) {
+/// Sleep for the specified number of nanoseconds
+/// Uses the mtime register (10MHz tick → 100ns per tick)
+pub fn sleep_ns(ns: u64) {
+	// one tick = 100 ns
+	let cycles = ns.div_ceil(100);
+	sleep_ticks(cycles);
+}
+
+fn sleep_ticks(ticks: u64) {
 	let start = time::read();
-	let target = start.wrapping_add(cycles as usize);
+	let target = start.wrapping_add(ticks as usize);
 
 	// Handle wrapping case
 	if target < start {

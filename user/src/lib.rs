@@ -3,9 +3,8 @@
 
 use crate::syscall::sys_exit;
 
-mod config;
 mod log;
-mod syscall;
+pub mod syscall;
 pub mod system;
 
 #[unsafe(no_mangle)]
