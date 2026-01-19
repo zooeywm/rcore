@@ -1,4 +1,4 @@
-use std::{env, fs::{self, File, read_dir}, io::Write, path::{Path, PathBuf}, process::Command};
+use std::{env, fs::{self, File, OpenOptions, read_dir}, io::{BufRead, BufReader, Seek, SeekFrom, Write}, path::{Path, PathBuf}, process::Command};
 
 use clap::{Parser, Subcommand};
 use sha2::{Digest, Sha256};
@@ -196,6 +196,7 @@ impl Xtask {
 		println!("Building user...");
 
 		let linker_script = self.package_dir.join("linker-user.ld");
+
 		let linker_script_abs = std::fs::canonicalize(&linker_script)?;
 
 		let rustflags = format!("-C link-arg=-T{} -C force-frame-pointers=yes", linker_script_abs.display());
@@ -211,8 +212,37 @@ impl Xtask {
 		apps.sort();
 		self.apps = apps;
 
-		for bin in &self.apps {
+		let file = OpenOptions::new().read(true).write(true).open(&linker_script)?;
+		let mut reader = BufReader::new(&file);
+		let mut offset = 0;
+		let mut line = String::new();
+		let mut writer = &file;
+		let base_address: u64 = 0x80400000;
+		let step: u64 = 0x20000;
+
+		loop {
+			line.clear();
+			let bytes = reader.read_line(&mut line)?;
+			if bytes == 0 {
+				break;
+			}
+			if line.trim_start().starts_with("BASE_ADDRESS") {
+				break;
+			}
+			offset += bytes as u64;
+		}
+
+		for (id, bin) in self.apps.iter().enumerate() {
 			println!("Building {bin}...");
+
+			writer.seek(SeekFrom::Start(offset))?;
+			let new_address = base_address + id as u64 * step;
+			let new_line = format!("BASE_ADDRESS = 0x{new_address:08x};\n");
+			if line.len().ne(&new_line.len()) {
+				anyhow::bail!("new line size must equals to the old one");
+			}
+			writer.write_all(new_line.as_bytes())?;
+			writer.flush()?;
 			let mut command = Command::new("cargo");
 			command.args(["build", "--bin", bin]);
 			if self.mode.eq("release") {
@@ -224,7 +254,15 @@ impl Xtask {
 			if !status.success() {
 				anyhow::bail!("User build failed");
 			}
+
+			println!("Application {bin} start with address 0x{new_address:08x}");
 		}
+
+        // restore the base address
+		writer.seek(SeekFrom::Start(offset))?;
+		let new_line = format!("BASE_ADDRESS = 0x{base_address:08x};\n");
+		writer.write_all(new_line.as_bytes())?;
+		writer.flush()?;
 
 		println!("✓ User build successful");
 		self.generate_user_app_data()

@@ -2,7 +2,7 @@ use core::arch::global_asm;
 
 use riscv::{interrupt::{Trap, supervisor::{Exception, Interrupt}}, register::{scause, stval, stvec::{self, Stvec, TrapMode}}};
 
-use crate::{batch::run_next_app, error, syscall::syscall, trap::context::TrapContext};
+use crate::{error, syscall::syscall, task::exit_current_and_run_next, trap::context::TrapContext};
 
 pub mod context;
 
@@ -29,16 +29,19 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 			cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
 		}
 		Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
-			error!("[kernel] PageFault in application, kernel killed it.");
-			run_next_app();
+			error!(
+				"[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
+				stval, cx.sepc
+			);
+            exit_current_and_run_next();
 		}
 		Trap::Exception(Exception::IllegalInstruction) => {
 			error!("[kernel] IllegalInstruction in application, kernel killed it.");
-			run_next_app();
+            exit_current_and_run_next();
 		}
 		Trap::Exception(e) => {
 			error!("{e:?} in application, kernel killed it.");
-			run_next_app();
+            exit_current_and_run_next();
 		}
 		_ => {
 			panic!("Unsupported trap {:#?}, stval = {:#x}!", scause.cause(), stval)

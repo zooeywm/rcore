@@ -1,2 +1,3 @@
 /target
 xtask/link_app.S
+kernel/src/asm/link_app.S

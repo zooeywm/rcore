@@ -24,16 +24,12 @@ pub extern "C" fn _start() -> ! {
 	(sbss as *const () as usize..ebss as *const () as usize)
 		.for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
 
-	println!("Hello, user!");
+	trace!("user app loaded");
 	trace!("text [{:#x}, {:#x})", stext as *const () as usize, etext as *const () as usize);
-	debug!(".rodata [{:#x}, {:#x})", srodata as *const () as usize, erodata as *const () as usize);
-	info!(".data [{:#x}, {:#x})", sdata as *const () as usize, edata as *const () as usize);
-	warn!(".bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
-	error!("This is an error log");
-	info!("Sleep 500ms");
-	// sleep_ms(500);
-	info!("Sleep 100000us(100ms)");
-	// sleep_us(100000);
+	trace!(".rodata [{:#x}, {:#x})", srodata as *const () as usize, erodata as *const () as usize);
+	trace!(".data [{:#x}, {:#x})", sdata as *const () as usize, edata as *const () as usize);
+	trace!(".bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
+	trace!("This is an error log");
 	sys_exit(main());
 	unreachable!("unreachable after sys_exit!");
 }

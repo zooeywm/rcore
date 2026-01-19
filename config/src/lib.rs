@@ -19,6 +19,8 @@ pub mod syscall {
 		pub fn nsec(tv_nsec: i64) -> Self { Self { tv_sec: 0, tv_nsec } }
 	}
 	pub const NANOSLEEP: usize = 101;
+
+	pub const SYSCALL_YIELD: usize = 124;
 }
 
 /// Fd

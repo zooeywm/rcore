@@ -53,3 +53,7 @@ pub fn sys_exit(exit_code: i32) -> isize { syscall(EXIT, [exit_code as usize, 0,
 pub fn sys_nanosleep(req: *const KernelTimespec, rem: *mut KernelTimespec) -> isize {
 	syscall(NANOSLEEP, [req as usize, rem as usize, 0])
 }
+
+pub fn sys_yield() -> isize {
+    syscall(SYSCALL_YIELD, [0, 0, 0])
+}
