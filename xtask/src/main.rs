@@ -42,6 +42,7 @@ struct Xtask {
 	package_dir:         PathBuf,
 	workspace_dir:       PathBuf,
 	kernel_need_rebuild: bool,
+	apps:                Vec<String>,
 }
 
 fn hash_dir(dir: &Path) -> anyhow::Result<Vec<u8>> {
@@ -74,6 +75,7 @@ fn main() -> anyhow::Result<()> {
 		package_dir,
 		workspace_dir,
 		kernel_need_rebuild: false,
+		apps: vec![],
 	};
 
 	match cli.command {
@@ -198,7 +200,18 @@ impl Xtask {
 
 		let rustflags = format!("-C link-arg=-T{} -C force-frame-pointers=yes", linker_script_abs.display());
 
-		for bin in ["00_hello_world", "01_store_fault", "02_power", "03_priv_inst", "04_priv_csr"] {
+		let mut apps: Vec<_> = read_dir(self.workspace_dir.join("user/src/bin"))?
+			.map(|entry| {
+				let mut name_with_ext = entry.unwrap().file_name().into_string().unwrap();
+				// remove extension
+				name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
+				name_with_ext
+			})
+			.collect();
+		apps.sort();
+		self.apps = apps;
+
+		for bin in &self.apps {
 			println!("Building {bin}...");
 			let mut command = Command::new("cargo");
 			command.args(["build", "--bin", bin]);
@@ -257,15 +270,6 @@ impl Xtask {
 		}
 		let app_link_file_path = self.workspace_dir.join("kernel/src/asm/link_app.S");
 		let mut app_link_file = File::create(&app_link_file_path)?;
-		let mut apps: Vec<_> = read_dir(self.workspace_dir.join("user/src/bin"))?
-			.map(|entry| {
-				let mut name_with_ext = entry.unwrap().file_name().into_string().unwrap();
-				// remove extension
-				name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
-				name_with_ext
-			})
-			.collect();
-		apps.sort();
 
 		writeln!(
 			app_link_file,
@@ -275,15 +279,15 @@ impl Xtask {
     .global _num_app
 _num_app:
     .quad {}"#,
-			apps.len()
+			self.apps.len()
 		)?;
 
-		for i in 0..apps.len() {
+		for i in 0..self.apps.len() {
 			writeln!(app_link_file, r#"    .quad app_{}_start"#, i)?;
 		}
-		writeln!(app_link_file, r#"    .quad app_{}_end"#, apps.len() - 1)?;
+		writeln!(app_link_file, r#"    .quad app_{}_end"#, self.apps.len() - 1)?;
 
-		for (idx, app) in apps.iter().enumerate() {
+		for (idx, app) in self.apps.iter().enumerate() {
 			let app_binary = self.target_dir.join(app);
 			let aapp_bin_binary = app_binary.with_extension("bin");
 
