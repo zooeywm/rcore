@@ -34,19 +34,15 @@ pub fn rust_main() -> ! {
 	(sbss as *const () as usize..ebss as *const () as usize)
 		.for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
 
-	println!("Hello, rcore!");
+	trace!("rcore started!");
 	trace!("text [{:#x}, {:#x})", stext as *const () as usize, etext as *const () as usize);
-	debug!(".rodata [{:#x}, {:#x})", srodata as *const () as usize, erodata as *const () as usize);
-	info!(".data [{:#x}, {:#x})", sdata as *const () as usize, edata as *const () as usize);
-	warn!(
+	trace!(".rodata [{:#x}, {:#x})", srodata as *const () as usize, erodata as *const () as usize);
+	trace!(".data [{:#x}, {:#x})", sdata as *const () as usize, edata as *const () as usize);
+	trace!(
 		"boot_stack top=bottom={:#x}, lower_bound={:#x}",
 		boot_stack_top as *const () as usize, boot_stack_lower_bound as *const () as usize
 	);
-	error!(".bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
-	info!("Sleep 500ms");
-	sleep_ms(500);
-	info!("Sleep 100000us(100ms)");
-	sleep_us(100000);
+	trace!(".bss [{:#x}, {:#x})", sbss as *const () as usize, ebss as *const () as usize);
 
 	trap::init();
 	loader::load_apps();
