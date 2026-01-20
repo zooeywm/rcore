@@ -36,13 +36,13 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 		}
 		Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
 			error!(
-				"[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
+				"PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
 				stval, cx.sepc
 			);
 			exit_current_and_run_next();
 		}
 		Trap::Exception(Exception::IllegalInstruction) => {
-			error!("[kernel] IllegalInstruction in application, kernel killed it.");
+			error!("IllegalInstruction in application, kernel killed it.");
 			exit_current_and_run_next();
 		}
 		Trap::Exception(e) => {
