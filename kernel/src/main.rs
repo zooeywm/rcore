@@ -3,8 +3,6 @@
 
 use core::{arch::global_asm, error};
 
-use crate::system::{sleep_ms, sleep_us};
-
 mod config;
 mod loader;
 mod log;
@@ -46,6 +44,8 @@ pub fn rust_main() -> ! {
 
 	trap::init();
 	loader::load_apps();
+	trap::enable_timer_interrupt();
+	system::set_next_trigger();
 	task::run_first_task();
 	panic!("Unreachable in rust_main!");
 }

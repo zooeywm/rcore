@@ -1,9 +1,9 @@
 use core::{fmt::{self, Write}, panic::PanicInfo};
 
 use riscv::register::time;
-use sbi_rt::{NoReason, Shutdown, SystemFailure, console_write_byte, system_reset};
+use sbi_rt::{NoReason, Shutdown, SystemFailure, console_write_byte, set_timer, system_reset};
 
-use crate::{config::MTIME_FREQUENCY_HZ, error, stack_trace::print_stack_trace};
+use crate::{config::{MICRO_PER_SEC, MTIME_FREQUENCY_HZ, TICKS_PER_SEC}, error, stack_trace::print_stack_trace};
 
 #[macro_export]
 macro_rules! print {
@@ -59,20 +59,6 @@ pub fn shutdown(failure: bool) -> ! {
 	unreachable!()
 }
 
-/// Sleep for the specified number of milliseconds.
-/// Uses the mtime register which runs at 10MHz.
-pub fn sleep_ms(ms: u64) {
-	let cycles = ms * MTIME_FREQUENCY_HZ / 1_000;
-	sleep_ticks(cycles);
-}
-
-/// Sleep for the specified number of microseconds.
-/// Uses the mtime register which runs at 10MHz.
-pub fn sleep_us(us: u64) {
-	let cycles = us * MTIME_FREQUENCY_HZ / 1_000_000;
-	sleep_ticks(cycles);
-}
-
 /// Sleep for the specified number of nanoseconds
 /// Uses the mtime register (10MHz tick → 100ns per tick)
 pub fn sleep_ns(ns: u64) {
@@ -91,3 +77,9 @@ fn sleep_ticks(ticks: u64) {
 	}
 	while time::read() < target {}
 }
+
+pub fn set_next_trigger() {
+	set_timer(time::read() as u64 + MTIME_FREQUENCY_HZ / TICKS_PER_SEC).expect("set_timer error");
+}
+
+pub fn get_time_us() -> u64 { time::read() as u64 / (MTIME_FREQUENCY_HZ / MICRO_PER_SEC) }

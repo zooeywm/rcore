@@ -4,6 +4,10 @@
 pub mod syscall {
 	pub const WRITE: usize = 64;
 	pub const EXIT: usize = 93;
+	pub const NANOSLEEP: usize = 101;
+	pub const YIELD: usize = 124;
+	pub const GETTIMEOFDAY: usize = 169;
+	pub const SETPRIORITY: usize = 140;
 
 	#[repr(C)]
 	pub struct KernelTimespec {
@@ -18,9 +22,16 @@ pub mod syscall {
 
 		pub fn nsec(tv_nsec: i64) -> Self { Self { tv_sec: 0, tv_nsec } }
 	}
-	pub const NANOSLEEP: usize = 101;
 
-	pub const SYSCALL_YIELD: usize = 124;
+	#[repr(C)]
+	#[derive(Debug, Default)]
+	pub struct TimeVal {
+		pub sec:  u64,
+		pub usec: u64,
+	}
+	impl TimeVal {
+		pub fn new() -> Self { Self::default() }
+	}
 }
 
 /// Fd

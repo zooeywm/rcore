@@ -54,6 +54,13 @@ pub fn sys_nanosleep(req: *const KernelTimespec, rem: *mut KernelTimespec) -> is
 	syscall(NANOSLEEP, [req as usize, rem as usize, 0])
 }
 
-pub fn sys_yield() -> isize {
-    syscall(SYSCALL_YIELD, [0, 0, 0])
+pub fn sys_yield() -> isize { syscall(YIELD, [0, 0, 0]) }
+
+pub fn sys_gettimeofday() -> isize {
+	let time = TimeVal::new();
+	let tz = 0;
+	match syscall(GETTIMEOFDAY, [&time as *const _ as usize, tz, 0]) {
+		0 => ((time.sec & 0xffff) * 1000 + time.usec / 1000) as isize,
+		_ => -1,
+	}
 }

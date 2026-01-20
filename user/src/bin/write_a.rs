@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use user::{print, println, syscall::sys_yield};
+use user::{info, print, println, syscall::sys_yield};
 
 const WIDTH: usize = 10;
 const HEIGHT: usize = 5;
@@ -12,9 +12,10 @@ fn main() -> i32 {
 		for _ in 0..WIDTH {
 			print!("A");
 		}
-		println!(" [{}/{}]", i + 1, HEIGHT);
+        println!("");
+		info!(" [{}/{}]", i + 1, HEIGHT);
 		sys_yield();
 	}
-	println!("Test write_a OK!");
+	info!("Test write_a OK!");
 	0
 }
