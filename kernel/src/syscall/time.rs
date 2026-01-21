@@ -1,6 +1,6 @@
 use config::{errno::EINVAL, syscall::KernelTimespec};
 
-use crate::system::sleep_ns;
+use crate::sbi::sleep_ns;
 
 /// Implementation of `sys_nanosleep`.
 ///

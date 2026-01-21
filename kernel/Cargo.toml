@@ -10,7 +10,9 @@ test  = false
 bench = false
 
 [dependencies]
-sbi-rt.workspace = true
-riscv.workspace  = true
-config.workspace = true
-lazy_static      = { version = "1.5", features = ["spin_no_std"] }
+sbi-rt.workspace       = true
+riscv.workspace        = true
+config.workspace       = true
+buddy_system_allocator = { workspace = true }
+lazy_static            = { version = "1.5", features = ["spin_no_std"] }
+enumflags2             = { workspace = true }

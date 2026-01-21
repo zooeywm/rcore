@@ -1,4 +1,4 @@
-use crate::{config::MAX_APP_NUM, println, system::shutdown, task::{context::TaskContext, global::UPSafeCell, switch::__switch}};
+use crate::{config::MAX_APP_NUM, println, sbi::shutdown, task::{context::TaskContext, global::UPSafeCell, switch::__switch}};
 
 mod context;
 mod switch;

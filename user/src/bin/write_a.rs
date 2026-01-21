@@ -12,7 +12,7 @@ fn main() -> i32 {
 		for _ in 0..WIDTH {
 			print!("A");
 		}
-        println!("");
+		println!("");
 		info!(" [{}/{}]", i + 1, HEIGHT);
 		sys_yield();
 	}

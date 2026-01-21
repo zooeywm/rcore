@@ -2,7 +2,7 @@ use core::arch::global_asm;
 
 use riscv::{interrupt::{Trap, supervisor::{Exception, Interrupt}}, register::{scause, sie, stval, stvec::{self, Stvec, TrapMode}}};
 
-use crate::{error, syscall::syscall, system::set_next_trigger, task::{exit_current_and_run_next, suspend_current_and_run_next}, trap::context::TrapContext};
+use crate::{error, sbi::set_next_trigger, syscall::syscall, task::{exit_current_and_run_next, suspend_current_and_run_next}, trap::context::TrapContext};
 
 pub mod context;
 

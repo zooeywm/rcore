@@ -258,7 +258,7 @@ impl Xtask {
 			println!("Application {bin} start with address 0x{new_address:08x}");
 		}
 
-        // restore the base address
+		// restore the base address
 		writer.seek(SeekFrom::Start(offset))?;
 		let new_line = format!("BASE_ADDRESS = 0x{base_address:08x};\n");
 		writer.write_all(new_line.as_bytes())?;

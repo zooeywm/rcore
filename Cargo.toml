@@ -19,6 +19,8 @@ inherits = "release"
 lto      = "fat"
 
 [workspace.dependencies]
-sbi-rt = { git = "https://github.com/rustsbi/rustsbi/", package = "sbi-rt", features = ["legacy"] }
-config = { path = "./config" }
-riscv  = "0.16"
+sbi-rt                 = { git = "https://github.com/rustsbi/rustsbi/", package = "sbi-rt", features = ["legacy"] }
+config                 = { path = "./config" }
+riscv                  = "0.16"
+buddy_system_allocator = "0.12"                                                                                     # kernel
+enumflags2             = "0.7"
